@@ -34,22 +34,22 @@ def list_calendars(service):
 
   return calendars_by_summary
 
-# Returns a list of events for a given calendar
-def list_events(service, calendar_id="primary", time_min=None, max_results=10):
+# Returns a list of events for a given calendar, optionally bounded by [time_min, time_max)
+def list_events(service, calendar_id="primary", time_min=None, time_max=None, max_results=10):
   if time_min is None:
     time_min = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
 
-  events_result = (
-      service.events()
-      .list(
-          calendarId=calendar_id,
-          timeMin=time_min,
-          maxResults=max_results,
-          singleEvents=True,
-          orderBy="startTime",
-      )
-      .execute()
-  )
+  request_params = {
+      "calendarId": calendar_id,
+      "timeMin": time_min,
+      "maxResults": max_results,
+      "singleEvents": True,
+      "orderBy": "startTime",
+  }
+  if time_max is not None:
+    request_params["timeMax"] = time_max
+
+  events_result = service.events().list(**request_params).execute()
   return events_result.get("items", [])
 
 
