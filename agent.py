@@ -147,29 +147,32 @@ def handle_message(service, user_message, max_rounds=5):
 		tools=TOOLS,
 	)
 
-	function_calls = [step for step in interaction.steps if step.type == "function_call"]
-	print(function_calls)
+	for _ in range(max_rounds):
+		function_calls = [step for step in interaction.steps if step.type == "function_call"]
+		print(function_calls)
 
-	if not function_calls:
-		return interaction.output_text
+		if not function_calls:
+			return interaction.output_text
 
-	results = []
-	for call in function_calls:
-		output = dispatch(call.name, call.arguments, service)
-		results.append({
-			"type": "function_result",
-			"name": call.name,
-			"call_id": call.id,
-			"result": [{"type": "text", "text": json.dumps(output, default=str)}],
-		})
+		results = []
+		for call in function_calls:
+			output = dispatch(call.name, call.arguments, service)
+			results.append({
+				"type": "function_result",
+				"name": call.name,
+				"call_id": call.id,
+				"result": [{"type": "text", "text": json.dumps(output, default=str)}],
+			})
 
-	interaction = client.interactions.create(
-		model=MODEL,
-		input=results,
-		system_instruction=system_instruction,
-		tools=TOOLS,
-		previous_interaction_id=interaction.id,
-	)
+		# Cada rodada pode gerar novas function_calls (ex: list_events -> delete_event),
+		# então repetimos até o Gemini não pedir mais nenhuma ferramenta.
+		interaction = client.interactions.create(
+			model=MODEL,
+			input=results,
+			system_instruction=system_instruction,
+			tools=TOOLS,
+			previous_interaction_id=interaction.id,
+		)
 
 	return interaction.output_text
 
@@ -177,5 +180,5 @@ def handle_message(service, user_message, max_rounds=5):
 if __name__ == "__main__":
 	service = calendar_service.get_service()
 	dicCalendarsId = calendar_service.list_calendars(service)
-	resposta = handle_message(service, "Crie um evento ammanhã para mim na agenda faculdade com o nome Materia nova as 19 horas  ")
+	resposta = handle_message(service, "Mova o evento que tenho amanhã chamado Materia Nova do calendario Faculdade para sexta 12 ate 14  ")
 	print(resposta)
